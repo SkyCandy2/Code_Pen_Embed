@@ -1,0 +1,101 @@
+<body style="overflow:hidden;margin:0;background:black">
+<script src="https://rawcdn.githack.com/strangerintheq/justlib/0abba3b/lib.js"></script>
+<script>
+
+const nz = createCanvas2d();   
+fillStyle("#000");
+fillRect(-2, -2, 4, 4);
+fillStyle("#ffffff09");
+setShape(rect(0.3, 0.3));
+many(444, _ => {
+    let x = rnds(0.6);
+    let y = rnds(0.6);
+    fillShape(x, y, rndr(), rnd())
+});
+//appendCanvas(nz);
+    
+const mask = createCanvas2d();   
+fillStyle("#fff");
+fillRect(-2, -2, 4, 4);
+fillStyle("#000");
+let s = min(innerHeight,innerWidth)
+mask.scale(1/s, 1/s)  
+mask.font = `${s*0.8}px Roboto, monospace`  
+mask.textAlign = 'center';
+mask.textBaseline = 'middle';   
+mask.fillText("PR", 0, 0)
+    
+const tex = createCanvas2d();
+
+const ratio = innerWidth/innerHeight;
+    
+const canvas = createCanvasWebgl(ratio);
+appendCanvas(canvas);
+    
+const shader = webglProgram(`
+    uniform sampler2D texture = tex.canvas;
+    uniform sampler2D noise = nz.canvas;
+    uniform vec2 res = [canvas.width, canvas.height];
+
+    float chan(vec2 uv){
+        float bg = texture2D(noise, uv+0.5).r*0.8;
+        bool mirror = uv.y < -0.25;
+        if (mirror) {
+            uv.y = - uv.y - 0.5;
+            uv.x *= 0.7 - uv.y;
+        }
+        float num = texture2D(texture, uv+0.5).r*1.9;
+     
+        return bg+num;
+    }
+    
+    void main() {
+        vec2 uv = gl_FragCoord.xy / res.xy - 0.5;
+        uv.${(ratio>1?"x*=":"y/=")+ratio};
+        float k = 0.01;
+        gl_FragColor = vec4(
+            chan(uv-k),
+            chan(uv),
+            chan(uv+k),
+            1.0
+        );
+        //gl_FragColor.r = smoothstep(0.4,0.41,length(uv));
+    }
+`);
+    setShape(rect(0.1, 0.05));
+    
+    const imgData = mask.getImageData(0,0,mask.canvas.width, mask.canvas.height)
+    
+    function readPixel(x, y) {
+        const w = mask.canvas.width;
+        const h = mask.canvas.height;
+        x = (x*w+w/2)|0;
+        y = (y*w+h/2)|0;
+        const offset = y * w * 4 + x * 4;
+        return imgData.data[offset];
+    }
+    
+    requestAnimationFrame(function anim(){
+        if (rndb(0.95)){
+            fillStyle("#00000040");
+            many(2222, _ => {
+                let x = rnds();
+                let y = rnds();
+                fillShape(x, y, rndr(), rnd())
+            });
+        }
+        fillStyle("#00000025");
+        fillRect(-2, -2, 4, 4);
+        fillStyle("#ffffff02");
+        many(6666, _ => {
+            let x = rnds();
+            let y = rnds();
+            if (readPixel(x, y) < 128) 
+                fillShape(x, y, rndr(), rnd())
+        });
+        shader();
+        requestAnimationFrame(anim)
+    })
+    
+</script>
+</body>
